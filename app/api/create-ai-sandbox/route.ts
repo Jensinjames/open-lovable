@@ -15,6 +15,26 @@ export async function POST() {
   let sandbox: any = null;
 
   try {
+    // Validate E2B API key before attempting to create sandbox
+    const apiKey = process.env.E2B_API_KEY;
+    if (!apiKey) {
+      console.error('[create-ai-sandbox] E2B_API_KEY environment variable is not set');
+      return NextResponse.json({
+        success: false,
+        error: 'E2B API key is not configured. Please set E2B_API_KEY in your .env.local file. Get your API key from https://e2b.dev/docs/api-key',
+        requiresSetup: true
+      }, { status: 400 });
+    }
+
+    if (apiKey.trim() === '' || apiKey === 'your_e2b_api_key') {
+      console.error('[create-ai-sandbox] E2B_API_KEY appears to be a placeholder value');
+      return NextResponse.json({
+        success: false,
+        error: 'E2B API key appears to be a placeholder. Please set a valid E2B_API_KEY in your .env.local file. Get your API key from https://e2b.dev/docs/api-key',
+        requiresSetup: true
+      }, { status: 400 });
+    }
+
     console.log('[create-ai-sandbox] Creating base sandbox...');
     
     // Kill existing sandbox if any
@@ -38,7 +58,7 @@ export async function POST() {
     // Create base sandbox - we'll set up Vite ourselves for full control
     console.log(`[create-ai-sandbox] Creating base E2B sandbox with ${appConfig.e2b.timeoutMinutes} minute timeout...`);
     sandbox = await Sandbox.create({ 
-      apiKey: process.env.E2B_API_KEY,
+      apiKey: apiKey,
       timeoutMs: appConfig.e2b.timeoutMs
     });
     
@@ -345,6 +365,21 @@ print('✓ Tailwind CSS should be loaded')
   } catch (error) {
     console.error('[create-ai-sandbox] Error:', error);
     
+    // Provide specific error messages for common E2B issues
+    let errorMessage = error instanceof Error ? error.message : 'Failed to create sandbox';
+    let statusCode = 500;
+    
+    if (errorMessage.includes('401') || errorMessage.includes('Invalid API key')) {
+      errorMessage = 'Invalid E2B API key. Please check that your E2B_API_KEY in .env.local is correct. Get your API key from https://e2b.dev/docs/api-key';
+      statusCode = 401;
+    } else if (errorMessage.includes('403')) {
+      errorMessage = 'E2B API key does not have permission to create sandboxes. Please check your E2B account and API key permissions.';
+      statusCode = 403;
+    } else if (errorMessage.includes('429')) {
+      errorMessage = 'E2B API rate limit exceeded. Please wait a moment and try again.';
+      statusCode = 429;
+    }
+    
     // Clean up on error
     if (sandbox) {
       try {
@@ -356,10 +391,12 @@ print('✓ Tailwind CSS should be loaded')
     
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'Failed to create sandbox',
-        details: error instanceof Error ? error.stack : undefined
+        success: false,
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined,
+        requiresSetup: statusCode === 401 || statusCode === 403
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

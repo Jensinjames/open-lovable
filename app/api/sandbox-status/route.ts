@@ -8,6 +8,19 @@ declare global {
 
 export async function GET() {
   try {
+    // Check if E2B API key is configured
+    const apiKey = process.env.E2B_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'your_e2b_api_key') {
+      return NextResponse.json({
+        success: false,
+        active: false,
+        healthy: false,
+        error: 'E2B API key is not configured. Please set E2B_API_KEY in your .env.local file.',
+        requiresSetup: true,
+        message: 'E2B API key configuration required'
+      });
+    }
+
     // Check if sandbox exists
     const sandboxExists = !!global.activeSandbox;
     
@@ -45,10 +58,22 @@ export async function GET() {
     
   } catch (error) {
     console.error('[sandbox-status] Error:', error);
+    
+    let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    let requiresSetup = false;
+    
+    if (errorMessage.includes('401') || errorMessage.includes('Invalid API key')) {
+      errorMessage = 'Invalid E2B API key configuration';
+      requiresSetup = true;
+    }
+    
     return NextResponse.json({ 
       success: false,
       active: false,
-      error: (error as Error).message 
+      healthy: false,
+      error: errorMessage,
+      requiresSetup,
+      message: 'Failed to check sandbox status'
     }, { status: 500 });
   }
 }
