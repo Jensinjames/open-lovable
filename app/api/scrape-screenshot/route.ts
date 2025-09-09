@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Use Firecrawl API to capture screenshot
-    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    const firecrawlResponse = await fetchWithRetry('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`,

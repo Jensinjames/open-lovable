@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SandboxState } from '@/types/sandbox';
 import type { ConversationState } from '@/types/conversation';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 declare global {
   var conversationState: ConversationState | null;
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
       console.log('[apply-ai-code] Installing packages from XML tags and tool calls:', uniquePackages);
       
       try {
-        const installResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/install-packages`, {
+        const installResponse = await fetchWithRetry(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/install-packages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ packages: uniquePackages })
@@ -235,7 +236,7 @@ export async function POST(request: NextRequest) {
       
       try {
         console.log('[apply-ai-code] Calling detect-and-install-packages...');
-        const packageResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/detect-and-install-packages`, {
+        const packageResponse = await fetchWithRetry(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/detect-and-install-packages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ files: filesForPackageDetection })
@@ -269,7 +270,7 @@ export async function POST(request: NextRequest) {
           
           try {
             // Call the restart-vite endpoint
-            const restartResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/restart-vite`, {
+            const restartResponse = await fetchWithRetry(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/restart-vite`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             });
@@ -576,6 +577,7 @@ if result.stderr:
         console.log('[apply-ai-code] Auto-generating missing components...');
         
         const autoCompleteResponse = await fetch(
+        const autoCompleteResponse = await fetchWithRetry(
           `${request.nextUrl.origin}/api/auto-complete-components`,
           {
             method: 'POST',

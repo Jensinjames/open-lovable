@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Sandbox } from '@e2b/code-interpreter';
 import type { SandboxState } from '@/types/sandbox';
 import type { ConversationState } from '@/types/conversation';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 declare global {
   var conversationState: ConversationState | null;
@@ -427,7 +428,7 @@ export async function POST(request: NextRequest) {
             const host = req.headers.get('host') || 'localhost:3000';
             const apiUrl = `${protocol}://${host}/api/install-packages`;
             
-            const installResponse = await fetch(apiUrl, {
+            const installResponse = await fetchWithRetry(apiUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
